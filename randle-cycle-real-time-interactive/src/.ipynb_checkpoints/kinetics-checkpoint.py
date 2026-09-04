@@ -164,9 +164,6 @@ def dAcetylCoA_Glc_dt(AcCoA_Glc, Pyruvate, ATP_draw):
     Includes ATP_draw_eff.
     """
 
-    # --- enforce non-negative pool for kinetics ---
-    AcCoA_pos = max(AcCoA_Glc, 0.0)
-
     # --- kinetic parameters ---
     Vmax_PDH    = 2.0
     Km_PDH      = 0.3
@@ -174,7 +171,7 @@ def dAcetylCoA_Glc_dt(AcCoA_Glc, Pyruvate, ATP_draw):
 
     # --- effective ATP draw (saturating) ---
     K_draw = 0.5
-    ATP_draw_eff = ATP_draw * (AcCoA_pos / (K_draw + AcCoA_Glc))
+    ATP_draw_eff = ATP_draw * (AcCoA_Glc / (K_draw + AcCoA_Glc))
 
     # --- PDH flux (inhibited by AcCoA) ---
     v_PDH = (
@@ -187,15 +184,175 @@ def dAcetylCoA_Glc_dt(AcCoA_Glc, Pyruvate, ATP_draw):
 
 
 
-def dCit_dt(Cit, AcCoA_Glc):
+def dCit_dt(Cit, AcCoA_Glu, AcCoA_Fat, Glc):
     """
     ODE for citrate (single signaling pool).
-    All kinetic parameters and fluxes defined inline.
+    Production from glucose- and fat-derived AcCoA,
+    clearance via lumped ACL+ACC (glucose-dependent).
     """
 
-    # --- kinetic parameters ---
-    k_Cit_prod  = 0.4
-    k_Cit_clear = 0.3
+    # --- citrate production from AcCoA pools ---
+    k_Cit_prod_Glu = 0.4   # from Acetyl-CoA_Glu
+    k_Cit_prod_Fat = 0.2   # from Acetyl-CoA_Fat
+
+    prod_term = (
+        k_Cit_prod_Glu * AcCoA_Glu
+        + k_Cit_prod_Fat * AcCoA_Fat
+    )
+
+    # --- ACL+ACC clearance (Cit -> Mal), glucose-activated ---
+    Vmax_ACL_ACC = 1.5
+    Km_ACL_ACC   = 0.10
+    K_ins        = 5.0    # glucose/insulin sensitivity
+
+    v_ACL_ACC = (
+        Vmax_ACL_ACC
+        * Cit / (Km_ACL_ACC + Cit)
+        * Glc / (K_ins + Glc)
+    )
 
     # --- ODE ---
-    return k_Cit_prod * AcCoA_Glc - k_Cit_clear * Cit
+    return prod_term - v_ACL_ACC
+
+
+
+
+def dLCFA_ext_dt(LCFA_ext, LCFA_in):
+    """
+    ODE for extracellular LCFA.
+    Kinetic parameters and v_CD36 are defined inline.
+    """
+
+    # --- kinetic parameters (explicit here) ---
+    Vmax_CD36 = 1.0
+    Km_CD36   = 0.1
+
+    # --- kinetic expression ---
+    v_CD36 = Vmax_CD36 * LCFA_ext / (Km_CD36 + LCFA_ext)
+
+    # --- ODE ---
+    return LCFA_in - v_CD36
+
+
+
+def dLCFA_CoA_cyto_dt(LCFA_ext, LCFA_CoA_cyto, Mal, Glc):
+    """
+    ODE for cytosolic LCFA-CoA.
+    All kinetic parameters and fluxes (v_CD36, v_FAS, v_CPT1, v_TAG)
+    are defined explicitly inside this function.
+    """
+
+    # --- CD36 uptake kinetics ---
+    Vmax_CD36 = 1.0
+    Km_CD36   = 0.1
+    v_CD36 = Vmax_CD36 * LCFA_ext / (Km_CD36 + LCFA_ext)
+
+    # --- FAS kinetics (Mal -> LCFA-CoA_cyto) ---
+    Vmax_FAS = 1.0
+    Km_FAS   = 0.1
+    K_FAS_Glc = 5.0
+    v_FAS = Vmax_FAS * (Mal / (Km_FAS + Mal)) * (Glc / (K_FAS_Glc + Glc))
+
+    # --- CPT1 transport (LCFA-CoA_cyto -> mito) ---
+    Vmax_CPT1 = 1.0
+    Km_CPT1   = 0.1
+    alpha_Mal = 0.1   # malonyl-CoA inhibition coefficient (1/mM)
+
+    v_CPT1 = Vmax_CPT1 * LCFA_CoA_cyto / (Km_CPT1 + LCFA_CoA_cyto)
+    v_CPT1 *= 1.0 / (1.0 + alpha_Mal * Mal)
+
+    # --- TAG synthase (LCFA-CoA_cyto -> TAG) ---
+    Vmax_TAG = 0.8
+    Km_TAG   = 0.1
+    K_TAG_Glc = 5.0
+    v_TAG = Vmax_TAG * LCFA_CoA_cyto / (Km_TAG + LCFA_CoA_cyto)
+    v_TAG *= Glc / (K_TAG_Glc + Glc)
+
+    # --- ODE ---
+    return v_CD36 + v_FAS - v_CPT1 - v_TAG
+
+
+
+def dLCFA_CoA_mito_dt(LCFA_CoA_cyto, LCFA_CoA_mito, Mal):
+    """
+    ODE for mitochondrial LCFA-CoA.
+    Kinetic parameters and fluxes (v_CPT1, v_beta_ox)
+    are defined explicitly inside this function.
+    """
+
+    # --- CPT1 transport (cyto -> mito) ---
+    Vmax_CPT1 = 1.0
+    Km_CPT1   = 0.1
+    alpha_Mal = 0.1   # malonyl-CoA inhibition coefficient (1/mM)
+
+    v_CPT1 = Vmax_CPT1 * LCFA_CoA_cyto / (Km_CPT1 + LCFA_CoA_cyto)
+    v_CPT1 *= 1.0 / (1.0 + alpha_Mal * Mal)
+
+    # --- beta-oxidation (mito LCFA-CoA -> Acetyl-CoA_Fat) ---
+    Vmax_beta = 3.0
+    Km_beta   = 0.05
+
+    v_beta_ox = Vmax_beta * LCFA_CoA_mito / (Km_beta + LCFA_CoA_mito)
+
+    # --- ODE ---
+    return v_CPT1 - v_beta_ox
+
+
+
+
+def dAcCoA_Fat_dt(LCFA_CoA_mito, AcCoA_Fat, ATP_draw):
+    """
+    ODE for fat-derived acetyl-CoA.
+    Includes ATP_draw_eff (saturating sink), matching glucose AcCoA style.
+    """
+
+    # --- beta-oxidation (LCFA-CoA_mito -> Acetyl-CoA_Fat) ---
+    Vmax_beta = 3.0
+    Km_beta   = 0.05
+
+    v_beta_ox = Vmax_beta * LCFA_CoA_mito / (Km_beta + LCFA_CoA_mito)
+
+    # --- effective ATP draw (saturating) ---
+    K_draw = 0.5
+    ATP_draw_eff = ATP_draw * (AcCoA_Fat / (K_draw + AcCoA_Fat))
+
+    # --- ODE ---
+    return v_beta_ox - ATP_draw_eff
+
+
+
+def dMal_dt(Cit, Mal, Glc):
+    """
+    ODE for malonyl-CoA.
+    Sources: v_ACL_ACC (from citrate)
+    Sinks:   v_FAS (to LCFA-CoA_cyto)
+    """
+
+    # --- enforce non-negative pool for kinetics ---
+    Mal_pos = max(Mal, 0.0)
+
+    # --- ACL+ACC kinetics (Cit -> Mal) ---
+    Vmax_ACL_ACC = 1.5
+    Km_ACL_ACC   = 0.10
+    K_ins        = 5.0   # glucose/insulin sensitivity
+
+    v_ACL_ACC = (
+        Vmax_ACL_ACC
+        * Cit / (Km_ACL_ACC + Cit)
+        * Glc / (K_ins + Glc)
+    )
+
+    # --- FAS kinetics (Mal -> LCFA-CoA_cyto) ---
+    Vmax_FAS   = 1.0
+    Km_FAS     = 0.10
+    K_FAS_Glc  = 5.0
+
+    v_FAS = (
+        Vmax_FAS
+        * Mal_pos / (Km_FAS + Mal_pos)
+        * Glc / (K_FAS_Glc + Glc)
+    )
+
+    # --- ODE ---
+    return v_ACL_ACC - v_FAS
+
