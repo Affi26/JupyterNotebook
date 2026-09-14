@@ -184,38 +184,6 @@ def dAcetylCoA_Glc_dt(AcCoA_Glc, Pyruvate, ATP_draw):
 
 
 
-def dCit_dt(Cit, AcCoA_Glu, AcCoA_Fat, Glc):
-    """
-    ODE for citrate (single signaling pool).
-    Production from glucose- and fat-derived AcCoA,
-    clearance via lumped ACL+ACC (glucose-dependent).
-    """
-
-    # --- citrate production from AcCoA pools ---
-    k_Cit_prod_Glu = 0.4   # from Acetyl-CoA_Glu
-    k_Cit_prod_Fat = 0.2   # from Acetyl-CoA_Fat
-
-    prod_term = (
-        k_Cit_prod_Glu * AcCoA_Glu
-        + k_Cit_prod_Fat * AcCoA_Fat
-    )
-
-    # --- ACL+ACC clearance (Cit -> Mal), glucose-activated ---
-    Vmax_ACL_ACC = 1.5
-    Km_ACL_ACC   = 0.10
-    K_ins        = 5.0    # glucose/insulin sensitivity
-
-    v_ACL_ACC = (
-        Vmax_ACL_ACC
-        * Cit / (Km_ACL_ACC + Cit)
-        * Glc / (K_ins + Glc)
-    )
-
-    # --- ODE ---
-    return prod_term - v_ACL_ACC
-
-
-
 
 def dLCFA_ext_dt(LCFA_ext, LCFA_in):
     """
@@ -318,6 +286,39 @@ def dAcCoA_Fat_dt(LCFA_CoA_mito, AcCoA_Fat, ATP_draw):
 
     # --- ODE ---
     return v_beta_ox - ATP_draw_eff
+
+
+
+def dCit_dt(Cit, AcCoA_Glu, AcCoA_Fat, Glc):
+    """
+    ODE for citrate (single signaling pool).
+    Production from glucose- and fat-derived AcCoA,
+    clearance via lumped ACL+ACC (glucose-dependent).
+    """
+
+    # --- citrate production from AcCoA pools ---
+    k_Cit_prod_Glu = 0.2   # from Acetyl-CoA_Glu
+    k_Cit_prod_Fat = 0.2   # from Acetyl-CoA_Fat
+
+    prod_term = (
+        k_Cit_prod_Glu * AcCoA_Glu
+        + k_Cit_prod_Fat * AcCoA_Fat
+    )
+
+    # --- ACL+ACC clearance (Cit -> Mal), glucose-activated ---
+    Vmax_ACL_ACC = 1.5
+    Km_ACL_ACC   = 0.10
+    K_ins        = 5.0    # glucose/insulin sensitivity
+
+    v_ACL_ACC = (
+        Vmax_ACL_ACC
+        * Cit / (Km_ACL_ACC + Cit)
+        * Glc / (K_ins + Glc)
+    )
+
+    # --- ODE ---
+    return prod_term - v_ACL_ACC
+
 
 
 

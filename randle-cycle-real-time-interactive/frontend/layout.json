@@ -1,0 +1,41 @@
+{
+  "nodes": {
+    "Glc_ext":        [100, 40],
+    "Glc":            [100, 200],
+    "Glc6P":          [60, 260],
+    "Fru6P":          [160, 290],
+    "Fru16P2":        [100, 360],
+    "Pyruvate":       [100, 440],
+    "AcCoA_Glc":      [400, 540],
+
+    "Cit":            [550, 330],
+    "Mal":            [550, 130],
+
+    "LCFA_ext":       [1000, 40],
+    "LCFA_CoA_cyto":  [1000, 260],
+    "LCFA_CoA_mito":  [1000, 440],
+    "AcCoA_Fat":      [700, 540]
+  },
+
+  "edges": [
+    ["Glc_ext", "Glc"],
+    ["Glc", "Glc6P"], 
+    ["Glc6P", "Fru6P"],
+    ["Fru6P", "Fru16P2"],
+    ["Fru16P2", "Pyruvate"],
+    ["Pyruvate", "AcCoA_Glc"],
+    ["AcCoA_Glc", "Cit"], 
+    ["Cit", "Mal"], 
+
+    ["LCFA_ext", "LCFA_CoA_cyto"], 
+    ["LCFA_CoA_cyto", "LCFA_CoA_mito"],
+    ["LCFA_CoA_mito", "AcCoA_Fat"],
+    ["AcCoA_Fat", "Cit"],
+
+    ["Cit", "Pyruvate"], 
+    ["Cit", "Fru6P"],
+    ["Cit", "Glc_ext"], 
+    ["Mal", "LCFA_CoA_mito"],   
+    ["Mal", "LCFA_CoA_cyto"]   
+  ]
+}

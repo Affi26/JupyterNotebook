@@ -12,10 +12,10 @@ randle-cycle-real-time-interactive/
 │   └── randle-2.png                             # reference picture 2
 │
 ├── src/
-│   ├── app.ipynb                 # Dash UI + animation
+│   ├── app.py                 # Dash UI + animation
 │   │
-│   ├── kinetics.ipynb            # All dX/dt equations
+│   ├── kinetics.py            # All dX/dt equations
 │   │
-│   └── randle_cycle.ipynb        # step() that combines all kinetics
+│   └── randle_cycle.ipynb     # step() that combines all kinetics
 │
 └── README.md
