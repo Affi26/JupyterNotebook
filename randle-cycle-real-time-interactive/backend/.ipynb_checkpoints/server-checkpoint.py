@@ -2,11 +2,8 @@ import asyncio
 import json
 import websockets
 
-import math   # for inhibition terms
-
 from model_interface import (
     DEFAULT_STATE,
-    STATE_INDEX,
     step_ivp_once,
     compute_all_fluxes
 )
@@ -66,36 +63,9 @@ async def handler(websocket):
             flux = compute_all_fluxes(state, inputs)
 
             # ------------------------------------------------
-            # Compute inhibition strengths (0–1)
+            # Send fluxes to frontend
             # ------------------------------------------------
-            AcCoA = state[STATE_INDEX["AcCoA"]]
-            Cit   = state[STATE_INDEX["Cit"]]
-            Mal   = state[STATE_INDEX["Mal"]]
-
-            alpha_AcCoA = 0.6
-            alpha_Mal   = 0.1
-
-            inh_PDH        = (alpha_AcCoA * AcCoA) / (1 + alpha_AcCoA * AcCoA)
-            inh_CPT1       = (alpha_Mal   * Mal)   / (1 + alpha_Mal   * Mal)
-            inh_Glycolysis = 1 / (1 + math.exp(-20*(Cit - 0.15)))
-            inh_BetaOx     = Mal / (0.2 + Mal)
-
-            inhibition = {
-                "PDH":        max(0.0, min(1.0, inh_PDH)),
-                "CPT1":       max(0.0, min(1.0, inh_CPT1)),
-                "Glycolysis": max(0.0, min(1.0, inh_Glycolysis)),
-                "BetaOx":     max(0.0, min(1.0, inh_BetaOx))
-            }
-
-            # ------------------------------------------------
-            # Send combined payload to frontend
-            # ------------------------------------------------
-            payload = {
-                "flux": flux,
-                "inhibition": inhibition
-            }
-
-            await websocket.send(json.dumps(payload))
+            await websocket.send(json.dumps(flux))
 
             # 20 FPS update rate
             await asyncio.sleep(0.05)

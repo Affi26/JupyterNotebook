@@ -5,20 +5,19 @@ import kinetics
 
 # Define state ordering (must match everywhere)
 # state = [Glc_ext, Glc, Glc6P, Fru6P, Fru16P2, Pyruvate,
-#          AcCoA, Cit, LCFA_ext, LCFA_CoA_cyto, LCFA_CoA_mito,
-#          Mal]
+#          AcCoA_Glc, Cit, LCFA_ext, LCFA_CoA_cyto, LCFA_CoA_mito,
+#          AcCoA_Fat, Mal]
 STATE_NAMES = [
     "Glc_ext","Glc","Glc6P","Fru6P","Fru16P2","Pyruvate",
     "AcCoA","Cit","LCFA_ext","LCFA_CoA_cyto","LCFA_CoA_mito",
     "Mal"
 ]
 
-STATE_INDEX = {name: i for i, name in enumerate(STATE_NAMES)}
+DEFAULT_STATE = np.array([0.0] * len(STATE_NAMES))
 
 
 # initial state
-DEFAULT_STATE = np.array([0.0] * len(STATE_NAMES))
-
+DEFAULT_STATE = np.array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
 
 def derivatives(t, x, inputs):
     """

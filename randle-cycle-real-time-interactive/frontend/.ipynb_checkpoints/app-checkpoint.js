@@ -2,22 +2,12 @@
 function fluxColor(f) {
     const clamped = Math.min(f, 1.0);
 
-    const r = Math.floor(255 * (1 - clamped)); // red when flux is low
-    const g = Math.floor(255 * clamped);       // green when flux is high
+    const r = Math.floor(255 * clamped);
+    const g = Math.floor(255 * (1 - clamped));
     const b = 50;
 
     return (r << 16) + (g << 8) + b;
 }
-
-
-function inhibitionColor(x) {
-    const c = Math.min(x, 1.0);
-    const r = Math.floor(200 * c);
-    const g = 30;
-    const b = 30;
-    return (r << 16) + (g << 8) + b;
-}
-
 
 
 // ------------------------------------------------------------
@@ -144,18 +134,16 @@ atpSlider.oninput = sendInputs;
 
 
 ws.onmessage = (event) => {
-    const data = JSON.parse(event.data);
-
-    const flux = data.flux;
-    const inh  = data.inhibition || {};
+    const flux = JSON.parse(event.data);
 
     // --------------------------------------------------------
-    // Node pulsing + inhibition shrink
+    // Node pulsing based on incoming flux
     // --------------------------------------------------------
     for (const [name, nodeObj] of Object.entries(nodes)) {
 
-        // Flux-based pulsing
+        // Find edges that end at this node
         const incoming = edges.filter(e => e.dst === name);
+
         let f_total = 0.0;
 
         for (const edge of incoming) {
@@ -168,15 +156,11 @@ ws.onmessage = (event) => {
 
         const amplified = Math.min(f_total * 2.5, 1.0);
 
-        // Inhibition shrink
-        const inhVal = inh[name] || 0.0;
-        const shrink = 1 - 0.3 * Math.min(inhVal, 1.0);
-
-        nodeObj.gfx.scale.set((1 + 0.3 * amplified) * shrink);
+        nodeObj.gfx.scale.set(1 + 0.3 * amplified);
     }
 
     // --------------------------------------------------------
-    // Edge thickness + color + inhibition overlay
+    // Edge thickness + color based on flux
     // --------------------------------------------------------
     for (const edge of edges) {
         const key = `${edge.src}→${edge.dst}`;
@@ -184,26 +168,17 @@ ws.onmessage = (event) => {
         const f = fluxKey ? flux[fluxKey] || 0.0 : 0.0;
 
         const amplified = Math.min(f * 3.0, 1.0);
+
         const color = fluxColor(amplified);
 
-        // Inhibition overlay
-        const inhVal = fluxKey ? inh[fluxKey] || 0.0 : 0.0;
-        const inhColor = inhibitionColor(inhVal);
-        const inhThickness = 2 + 8 * inhVal;
-
         edge.gfx.clear();
-
-        // Flux layer
         edge.gfx.lineStyle(2 + 10 * amplified, color, 0.9);
-        edge.gfx.moveTo(nodes[edge.src].gfx.x, nodes[edge.src].gfx.y);
-        edge.gfx.lineTo(nodes[edge.dst].gfx.x, nodes[edge.dst].gfx.y);
 
-        // Inhibition layer
-        if (inhVal > 0.01) {
-            edge.gfx.lineStyle(inhThickness, inhColor, 0.6);
-            edge.gfx.moveTo(nodes[edge.src].gfx.x, nodes[edge.src].gfx.y);
-            edge.gfx.lineTo(nodes[edge.dst].gfx.x, nodes[edge.dst].gfx.y);
-        }
+        const s = nodes[edge.src].gfx;
+        const d = nodes[edge.dst].gfx;
+
+        edge.gfx.moveTo(s.x, s.y);
+        edge.gfx.lineTo(d.x, d.y);
     }
 };
 

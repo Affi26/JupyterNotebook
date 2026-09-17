@@ -147,7 +147,7 @@ def dPyruvate_dt(Pyruvate, Fru16P2, AcCoA):
     # PDH (inhibited by Acetyl-CoA_Glc)
     v_PDH = (
         Vmax_PDH * Pyruvate / (Km_PDH + Pyruvate)
-        * (1.0 / (1.0 + alpha_AcCoA * AcCoA))
+        * (1.0 / (1.0 + alpha_AcCoA * AcCoA_Glc))
     )
 
     # LDH (pyruvate → lactate)
@@ -272,8 +272,8 @@ def dAcetylCoA_dt(AcCoA, Pyruvate, LCFA_CoA_mito, ATP_draw):
     v_cit = Vmax_cit * AcCoA / (Km_cit + AcCoA)
 
     # --- ATP draw sink (saturating in AcCoA, scaled by ATP_draw) ---
-    K_draw  = 0.1
-    k_ATP   = 6.0
+    K_draw  = 0.5
+    k_ATP   = 1.0
 
     ATP_draw_eff = k_ATP * ATP_draw * (AcCoA / (K_draw + AcCoA))
 
