@@ -327,7 +327,7 @@ def dAcetylCoA_dt(AcCoA, Pyruvate, LCFA_CoA_mito, ATP_draw):
 
 
 
-def dCit_dt(Cit, AcCoA, Glc):
+def dCit_dt(Cit, AcCoA, Glc, ATP_draw):
     """
     ODE for citrate (single signaling pool).
     Production from shared Acetyl-CoA via v_cit,
@@ -344,6 +344,7 @@ def dCit_dt(Cit, AcCoA, Glc):
     Vmax_ACL_ACC = 1.5
     Km_ACL_ACC   = 0.10
     K_ins        = 5.0    # glucose/insulin sensitivity
+    k_ATP_Cit    = 1.0    # ATP draw directly also consumes citrate
 
     v_ACL_ACC = (
         Vmax_ACL_ACC
@@ -351,8 +352,14 @@ def dCit_dt(Cit, AcCoA, Glc):
         * Glc / (K_ins + Glc)
     )
 
+    v_ATP_cit = (
+        k_ATP_Cit
+        * ATP_draw
+        * Cit / (Km_cit + Cit)
+    )
+
     # --- ODE ---
-    return v_cit - v_ACL_ACC
+    return v_cit - v_ACL_ACC - v_ATP_cit
 
 
 
