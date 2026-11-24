@@ -1,55 +1,79 @@
+# server.py
+
 import asyncio
 import json
+
 import websockets
+
+import kinetics
 
 from model_interface import (
     DEFAULT_STATE,
     step_ivp_once,
-    compute_all_fluxes
+    derivatives
 )
 
 # ------------------------------------------------------------
 # Simulation parameters (modifiable from frontend)
 # ------------------------------------------------------------
+
 inputs = {
     "glu_in": 0.0,
     "fat_in": 0.0,
     "atp_draw": 0.0
 }
 
-# Current ODE state
-state = DEFAULT_STATE.copy()
+# ------------------------------------------------------------
+# Current simulation state
+# ------------------------------------------------------------
 
+state = DEFAULT_STATE.copy()
 
 # ------------------------------------------------------------
 # WebSocket handler
 # ------------------------------------------------------------
+
 async def handler(websocket):
-    global state, inputs
+
+    global state
+    global inputs
 
     print("Client connected.")
 
     try:
+
         while True:
+
             # ------------------------------------------------
-            # Receive input updates from frontend (optional)
+            # Receive frontend input updates
             # ------------------------------------------------
+
             try:
-                msg = await asyncio.wait_for(websocket.recv(), timeout=0.001)
+
+                msg = await asyncio.wait_for(
+                    websocket.recv(),
+                    timeout=0.001
+                )
+
                 data = json.loads(msg)
 
-                # Update inputs if provided
-                for key in ["glu_in", "fat_in", "atp_draw"]:
+                for key in [
+                    "glu_in",
+                    "fat_in",
+                    "atp_draw"
+                ]:
+
                     if key in data:
                         inputs[key] = float(data[key])
 
             except asyncio.TimeoutError:
-                pass  # no message received this frame
+                pass
 
             # ------------------------------------------------
-            # Step ODE system
+            # Advance simulation
             # ------------------------------------------------
-            state, _ = step_ivp_once(
+
+            state, flux = step_ivp_once(
                 state,
                 inputs["glu_in"],
                 inputs["fat_in"],
@@ -58,29 +82,73 @@ async def handler(websocket):
             )
 
             # ------------------------------------------------
-            # Compute flux dictionary
+            # Compute inhibition metrics
             # ------------------------------------------------
-            flux = compute_all_fluxes(state, inputs)
+
+            inhibition = kinetics.compute_inhibitions(
+                state
+            )
 
             # ------------------------------------------------
-            # Send fluxes to frontend
+            # Build payload
             # ------------------------------------------------
-            await websocket.send(json.dumps(flux))
 
-            # 20 FPS update rate
+            dxdt = derivatives(
+                0,
+                state,
+                inputs
+            )
+
+            payload = {
+
+                # Actual concentrations
+                "state": kinetics.state_to_dict(
+                    state
+                ),
+
+                # State derivatives (dx/dt)
+                "dstate": kinetics.state_to_dict(
+                    dxdt
+                ),
+
+                # Reaction rates
+                "flux": flux,
+
+                # Normalized inhibition strengths
+                "inhibition": inhibition
+            }
+
+            await websocket.send(
+                json.dumps(payload)
+            )
+
+            # ~20 FPS
+
             await asyncio.sleep(0.05)
 
     except websockets.ConnectionClosed:
+
         print("Client disconnected.")
 
 
 # ------------------------------------------------------------
-# WebSocket server entry point
+# Server entry point
 # ------------------------------------------------------------
+
 async def main():
-    async with websockets.serve(handler, "localhost", 8765):
-        print("WebSocket server running on ws://localhost:8765")
-        await asyncio.Future()  # run forever
+
+    async with websockets.serve(
+        handler,
+        "localhost",
+        8765
+    ):
+
+        print(
+            "WebSocket server running on "
+            "ws://localhost:8765"
+        )
+
+        await asyncio.Future()
 
 
 if __name__ == "__main__":

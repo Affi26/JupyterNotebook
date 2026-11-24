@@ -1,3 +1,48 @@
+import numpy as np
+import math
+
+# ------------------------------------------------------------
+# Canonical model metadata
+# ------------------------------------------------------------
+
+STATE_NAMES = [
+    "Glc_ext",
+    "Glc",
+    "Glc6P",
+    "Fru6P",
+    "Fru16P2",
+    "Pyruvate",
+    "AcCoA",
+    "Cit",
+    "LCFA_ext",
+    "LCFA_CoA_cyto",
+    "LCFA_CoA_mito",
+    "Mal"
+]
+
+STATE_INDEX = {
+    name: i
+    for i, name in enumerate(STATE_NAMES)
+}
+
+DEFAULT_STATE = np.zeros(len(STATE_NAMES))
+
+
+def state_to_dict(state):
+    """
+    Convert state vector to named dictionary.
+
+    Used by websocket transport and frontend
+    visualization.
+    """
+
+    return {
+        name: float(state[i])
+        for i, name in enumerate(STATE_NAMES)
+    }
+
+
+
 def dGlc_ext_dt(Glc_ext, Glc_in):
     """
     ODE for extracellular glucose.
@@ -147,7 +192,7 @@ def dPyruvate_dt(Pyruvate, Fru16P2, AcCoA):
     # PDH (inhibited by Acetyl-CoA_Glc)
     v_PDH = (
         Vmax_PDH * Pyruvate / (Km_PDH + Pyruvate)
-        * (1.0 / (1.0 + alpha_AcCoA * AcCoA_Glc))
+        * (1.0 / (1.0 + alpha_AcCoA * AcCoA))
     )
 
     # LDH (pyruvate → lactate)
@@ -272,8 +317,8 @@ def dAcetylCoA_dt(AcCoA, Pyruvate, LCFA_CoA_mito, ATP_draw):
     v_cit = Vmax_cit * AcCoA / (Km_cit + AcCoA)
 
     # --- ATP draw sink (saturating in AcCoA, scaled by ATP_draw) ---
-    K_draw  = 0.5
-    k_ATP   = 1.0
+    K_draw  = 0.1
+    k_ATP   = 6.0
 
     ATP_draw_eff = k_ATP * ATP_draw * (AcCoA / (K_draw + AcCoA))
 
@@ -282,7 +327,7 @@ def dAcetylCoA_dt(AcCoA, Pyruvate, LCFA_CoA_mito, ATP_draw):
 
 
 
-def dCit_dt(Cit, AcCoA, Glc):
+def dCit_dt(Cit, AcCoA, Glc, ATP_draw):
     """
     ODE for citrate (single signaling pool).
     Production from shared Acetyl-CoA via v_cit,
@@ -299,6 +344,7 @@ def dCit_dt(Cit, AcCoA, Glc):
     Vmax_ACL_ACC = 1.5
     Km_ACL_ACC   = 0.10
     K_ins        = 5.0    # glucose/insulin sensitivity
+    k_ATP_Cit    = 1.0    # ATP draw directly also consumes citrate
 
     v_ACL_ACC = (
         Vmax_ACL_ACC
@@ -306,8 +352,14 @@ def dCit_dt(Cit, AcCoA, Glc):
         * Glc / (K_ins + Glc)
     )
 
+    v_ATP_cit = (
+        k_ATP_Cit
+        * ATP_draw
+        * Cit / (Km_cit + Cit)
+    )
+
     # --- ODE ---
-    return v_cit - v_ACL_ACC
+    return v_cit - v_ACL_ACC - v_ATP_cit
 
 
 
@@ -347,3 +399,206 @@ def dMal_dt(Cit, Mal, Glc):
     # --- ODE ---
     return v_ACL_ACC - v_FAS
 
+
+
+# ------------------------------------------------------------
+# Visualization helpers
+# ------------------------------------------------------------
+
+def compute_fluxes(x, inputs):
+    """
+    Compute all pathway fluxes used by the frontend.
+
+    This is the single authoritative source
+    for visualization fluxes.
+    """
+
+    (
+        Glc_ext,
+        Glc,
+        Glc6P,
+        Fru6P,
+        Fru16P2,
+        Pyruvate,
+        AcCoA,
+        Cit,
+        LCFA_ext,
+        LCFA_CoA_cyto,
+        LCFA_CoA_mito,
+        Mal
+    ) = x
+
+    # GLUT4
+    Vmax_GLUT4 = 1.0
+    Km_GLUT4 = 5.0
+
+    GLUT4 = (
+        Vmax_GLUT4
+        * Glc_ext
+        / (Km_GLUT4 + Glc_ext + 1e-12)
+    )
+
+    # Glycolysis
+    Vmax_LG = 3.0
+    Km_LG = 0.4
+
+    Glycolysis = (
+        Vmax_LG
+        * Fru16P2
+        / (Km_LG + Fru16P2 + 1e-12)
+    )
+
+    # PDH
+    Vmax_PDH = 2.0
+    Km_PDH = 0.3
+    alpha_AcCoA = 0.6
+
+    PDH = (
+        Vmax_PDH
+        * Pyruvate
+        / (Km_PDH + Pyruvate + 1e-12)
+    )
+
+    PDH *= (
+        1.0
+        / (1.0 + alpha_AcCoA * AcCoA)
+    )
+
+    # Citrate production
+
+    Vmax_cit = 2.0
+    Km_cit = 0.05
+
+    Citrate_prod = (
+        Vmax_cit
+        * AcCoA
+        / (Km_cit + AcCoA + 1e-12)
+    )
+
+    # ACL_ACC
+
+    Vmax_ACL_ACC = 1.5
+    Km_ACL_ACC = 0.10
+    K_ins = 5.0
+
+    ACL_ACC = (
+        Vmax_ACL_ACC
+        * Cit
+        / (Km_ACL_ACC + Cit + 1e-12)
+        * (
+            Glc
+            / (K_ins + Glc + 1e-12)
+        )
+    )
+
+    # CD36
+
+    Vmax_CD36 = 1.0
+    Km_CD36 = 0.1
+
+    CD36 = (
+        Vmax_CD36
+        * LCFA_ext
+        / (Km_CD36 + LCFA_ext + 1e-12)
+    )
+
+    # CPT1
+
+    Vmax_CPT1 = 1.0
+    Km_CPT1 = 0.1
+    alpha_Mal = 0.1
+
+    CPT1 = (
+        Vmax_CPT1
+        * LCFA_CoA_cyto
+        / (Km_CPT1 + LCFA_CoA_cyto + 1e-12)
+    )
+
+    CPT1 *= (
+        1.0
+        / (1.0 + alpha_Mal * max(Mal, 0.0))
+    )
+
+    # Beta oxidation
+
+    Vmax_beta = 3.0
+    Km_beta = 0.05
+
+    BetaOx = (
+        Vmax_beta
+        * LCFA_CoA_mito
+        / (Km_beta + LCFA_CoA_mito + 1e-12)
+    )
+
+    # FAS
+
+    Vmax_FAS = 1.0
+    Km_FAS = 0.1
+    K_FAS_Glc = 5.0
+
+    Mal_pos = max(Mal, 0.0)
+
+    FAS = (
+        Vmax_FAS
+        * (
+            Mal_pos
+            / (Km_FAS + Mal_pos + 1e-12)
+        )
+        * (
+            Glc
+            / (K_FAS_Glc + Glc + 1e-12)
+        )
+    )
+
+    return {
+        "GLUT4": float(max(0.0, GLUT4)),
+        "Glycolysis": float(max(0.0, Glycolysis)),
+        "PDH": float(max(0.0, PDH)),
+        "Citrate_prod": float(max(0.0, Citrate_prod)),
+        "ACL_ACC": float(max(0.0, ACL_ACC)),
+        "CD36": float(max(0.0, CD36)),
+        "CPT1": float(max(0.0, CPT1)),
+        "BetaOx": float(max(0.0, BetaOx)),
+        "FAS": float(max(0.0, FAS)),
+        "Net_Cit": float(Citrate_prod - ACL_ACC)
+    }
+
+
+def compute_inhibitions(state):
+    """
+    Frontend inhibition indicators.
+    """
+
+    AcCoA = state[STATE_INDEX["AcCoA"]]
+    Cit = state[STATE_INDEX["Cit"]]
+    Mal = state[STATE_INDEX["Mal"]]
+
+    alpha_AcCoA = 0.6
+    alpha_Mal = 0.1
+
+    inh_PDH = (
+        alpha_AcCoA * AcCoA
+    ) / (
+        1 + alpha_AcCoA * AcCoA
+    )
+
+    inh_CPT1 = (
+        alpha_Mal * Mal
+    ) / (
+        1 + alpha_Mal * Mal
+    )
+
+    inh_Glycolysis = (
+        1 / (1 + math.exp(-20 * (Cit - 0.15)))
+    )
+
+    inh_BetaOx = (
+        Mal / (0.2 + Mal)
+    )
+
+    return {
+        "PDH": max(0.0, min(1.0, inh_PDH)),
+        "CPT1": max(0.0, min(1.0, inh_CPT1)),
+        "Glycolysis": max(0.0, min(1.0, inh_Glycolysis)),
+        "BetaOx": max(0.0, min(1.0, inh_BetaOx))
+    }
