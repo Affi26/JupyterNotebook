@@ -100,7 +100,8 @@ def derivatives(t, x, inputs):
     dCit = kinetics.dCit_dt(
         Cit,
         AcCoA,
-        Glc
+        Glc,
+        inputs["atp_draw"]
     )
 
     dLCFA_ext = kinetics.dLCFA_ext_dt(

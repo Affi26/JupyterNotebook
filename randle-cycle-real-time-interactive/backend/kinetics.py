@@ -15,88 +15,89 @@ PARAMS = {
 
     "GLUT4": {
         "Vmax": 1.0,
-        "Km": 5.0
+        "Km": 1.0,
+        "alpha_Cit": 1.0
     },
 
     "HK": {
-        "Vmax": 2.0,
-        "Km": 0.5
+        "Vmax": 1.0,
+        "Km": 1.0
     },
 
     "PGI": {
-        "Vmax": 1.5,
-        "Km": 0.3
+        "Vmax": 1.0,
+        "Km": 1.0
     },
 
     "GS": {
-        "Vmax": 0.8,
-        "Km": 0.4
+        "Vmax": 1.0,
+        "Km": 1.0
     },
 
     "PFK": {
-        "Vmax": 2.0,
-        "Km": 0.2,
-        "alpha_Cit": 0.5
+        "Vmax": 1.0,
+        "Km": 1.0,
+        "alpha_Cit": 1.0
     },
 
     "LG": {
-        "Vmax": 3.0,
-        "Km": 0.4
+        "Vmax": 1.0,
+        "Km": 1.0
     },
 
     "PDH": {
-        "Vmax": 2.0,
-        "Km": 0.3,
-        "alpha_AcCoA": 0.6
+        "Vmax": 1.0,
+        "Km": 1.0,
+        "alpha_AcCoA": 1.0
     },
 
     "LDH": {
-        "Vmax": 1.5,
-        "Km": 0.2
+        "Vmax": 1.0,
+        "Km": 1.0
     },
 
     "CD36": {
         "Vmax": 1.0,
-        "Km": 0.1
+        "Km": 1.0
     },
 
     "TAG": {
-        "Vmax": 0.8,
-        "Km": 0.1,
-        "K_Glc": 5.0
+        "Vmax": 1.0,
+        "Km": 1.0,
+        "K_Glc": 1.0
     },
 
     "CPT1": {
         "Vmax": 1.0,
-        "Km": 0.1,
-        "alpha_Mal": 0.1
+        "Km": 1.0,
+        "alpha_Mal": 1.0
     },
 
     "BetaOx": {
-        "Vmax": 3.0,
-        "Km": 0.05
+        "Vmax": 1.0,
+        "Km": 1.0
     },
 
     "Citrate": {
-        "Vmax": 2.0,
-        "Km": 0.05
+        "Vmax": 1.0,
+        "Km": 1.0
     },
 
     "ACL_ACC": {
-        "Vmax": 1.5,
-        "Km": 0.10,
-        "K_ins": 0.5
+        "Vmax": 1.0,
+        "Km": 1.0,
+        "K_ins": 1.0
     },
 
     "FAS": {
         "Vmax": 1.0,
-        "Km": 0.10,
-        "K_Glc": 5.0
+        "Km": 1.0,
+        "K_Glc": 1.0
     },
 
     "ATP": {
-        "K_draw": 0.1,
-        "k_ATP": 6.0,
+        "K_draw": 1.0,
+        "k_ATP": 1.0,
         "k_ATP_Cit": 1.0
     }
 }
@@ -118,7 +119,8 @@ STATE_NAMES = [
     "LCFA_ext",
     "LCFA_CoA_cyto",
     "LCFA_CoA_mito",
-    "Mal"
+    "Mal",
+    "TAG"
 ]
 
 STATE_INDEX = {
@@ -154,180 +156,95 @@ def state_to_dict(state):
 # ------------------------------------------------------------
 
 
-def v_GLUT4(Glc_ext):
+def v_GLUT4(Glc_ext, Cit):
 
     p = PARAMS["GLUT4"]
 
-    return (
-        p["Vmax"]
-        * Glc_ext
-        / (p["Km"] + Glc_ext + 1e-12)
-    )
+    return ( p["Vmax"] * Glc_ext / (p["Km"] + Glc_ext + 1e-12) * (1.0 / (1.0 + p["alpha_Cit"] * Cit)) )
 
 
 def v_HK(Glc):
 
     p = PARAMS["HK"]
 
-    return (
-        p["Vmax"]
-        * Glc
-        / (p["Km"] + Glc + 1e-12)
-    )
+    return ( p["Vmax"] * Glc / (p["Km"] + Glc + 1e-12) )
 
 
 def v_PGI(Glc6P):
 
     p = PARAMS["PGI"]
 
-    return (
-        p["Vmax"]
-        * Glc6P
-        / (p["Km"] + Glc6P + 1e-12)
-    )
+    return ( p["Vmax"] * Glc6P / (p["Km"] + Glc6P + 1e-12) )
 
 
 def v_GS(Glc6P):
 
     p = PARAMS["GS"]
 
-    return (
-        p["Vmax"]
-        * Glc6P
-        / (p["Km"] + Glc6P + 1e-12)
-    )
+    return ( p["Vmax"] * Glc6P / (p["Km"] + Glc6P + 1e-12) )
 
 
 def v_PFK(Fru6P, Cit):
 
     p = PARAMS["PFK"]
 
-    return (
-        p["Vmax"]
-        * Fru6P
-        / (p["Km"] + Fru6P + 1e-12)
-        * (
-            1.0
-            /
-            (
-                1.0
-                + p["alpha_Cit"] * Cit
-            )
-        )
-    )
+    return ( p["Vmax"] * Fru6P / (p["Km"] + Fru6P + 1e-12) * (1.0 / (1.0 + p["alpha_Cit"] * Cit)) )
 
 
 def v_LG(Fru16P2):
 
     p = PARAMS["LG"]
 
-    return (
-        p["Vmax"]
-        * Fru16P2
-        / (p["Km"] + Fru16P2 + 1e-12)
-    )
+    return ( p["Vmax"] * Fru16P2 / (p["Km"] + Fru16P2 + 1e-12) )
 
 
 def v_PDH(Pyruvate, AcCoA):
 
     p = PARAMS["PDH"]
 
-    return (
-        p["Vmax"]
-        * Pyruvate
-        / (p["Km"] + Pyruvate + 1e-12)
-        * (
-            1.0
-            /
-            (
-                1.0
-                + p["alpha_AcCoA"] * AcCoA
-            )
-        )
-    )
+    return ( p["Vmax"] * Pyruvate / (p["Km"] + Pyruvate + 1e-12) * (1.0 / (1.0 + p["alpha_AcCoA"] * AcCoA)) )
 
 
 def v_LDH(Pyruvate):
 
     p = PARAMS["LDH"]
 
-    return (
-        p["Vmax"]
-        * Pyruvate
-        / (p["Km"] + Pyruvate + 1e-12)
-    )
+    return ( p["Vmax"] * Pyruvate / (p["Km"] + Pyruvate + 1e-12) )
 
 
 def v_CD36(LCFA_ext):
 
     p = PARAMS["CD36"]
 
-    return (
-        p["Vmax"]
-        * LCFA_ext
-        / (p["Km"] + LCFA_ext + 1e-12)
-    )
+    return ( p["Vmax"] * LCFA_ext / (p["Km"] + LCFA_ext + 1e-12) )
 
 
 def v_CPT1(LCFA_CoA_cyto, Mal):
 
     p = PARAMS["CPT1"]
 
-    return (
-        p["Vmax"]
-        * LCFA_CoA_cyto
-        / (p["Km"] + LCFA_CoA_cyto + 1e-12)
-        * (
-            1.0
-            /
-            (
-                1.0
-                + p["alpha_Mal"] * max(Mal, 0.0)
-            )
-        )
-    )
+    return ( p["Vmax"] * LCFA_CoA_cyto / (p["Km"] + LCFA_CoA_cyto + 1e-12) * (1.0 / (1.0 + p["alpha_Mal"] * max(Mal, 0.0))) )
 
 
 def v_BetaOx(LCFA_CoA_mito):
 
     p = PARAMS["BetaOx"]
 
-    return (
-        p["Vmax"]
-        * LCFA_CoA_mito
-        / (p["Km"] + LCFA_CoA_mito + 1e-12)
-    )
+    return ( p["Vmax"] * LCFA_CoA_mito / (p["Km"] + LCFA_CoA_mito + 1e-12) )
 
 
 def v_CitrateProd(AcCoA):
 
     p = PARAMS["Citrate"]
 
-    return (
-        p["Vmax"]
-        * AcCoA
-        / (p["Km"] + AcCoA + 1e-12)
-    )
+    return ( p["Vmax"] * AcCoA / (p["Km"] + AcCoA + 1e-12) )
 
 
 def v_ACL_ACC(Cit, Glc):
 
     p = PARAMS["ACL_ACC"]
 
-    return (
-        p["Vmax"]
-        * Cit
-        / (p["Km"] + Cit + 1e-12)
-        * (
-            Glc
-            /
-            (
-                p["K_ins"]
-                + Glc
-                + 1e-12
-            )
-        )
-    )
+    return ( p["Vmax"] * Cit / (p["Km"] + Cit + 1e-12) * (Glc / (p["K_ins"] + Glc + 1e-12)) )
 
 
 def v_FAS(Mal, Glc):
@@ -336,48 +253,21 @@ def v_FAS(Mal, Glc):
 
     Mal_pos = max(Mal, 0.0)
 
-    return (
-        p["Vmax"]
-        * (
-            Mal_pos
-            / (p["Km"] + Mal_pos + 1e-12)
-        )
-        * (
-            Glc
-            / (p["K_Glc"] + Glc + 1e-12)
-        )
-    )
+    return ( p["Vmax"] * (Mal_pos / (p["Km"] + Mal_pos + 1e-12)) * (Glc / (p["K_Glc"] + Glc + 1e-12)) )
+
 
 def v_TAG(LCFA_CoA_cyto, Glc):
 
     p = PARAMS["TAG"]
 
-    return (
-        p["Vmax"]
-        * LCFA_CoA_cyto
-        / (p["Km"] + LCFA_CoA_cyto + 1e-12)
-        * (
-            Glc
-            / (p["K_Glc"] + Glc + 1e-12)
-        )
-    )
+    return ( p["Vmax"] * LCFA_CoA_cyto / (p["Km"] + LCFA_CoA_cyto + 1e-12) * (Glc / (p["K_Glc"] + Glc + 1e-12)) )
+
 
 def v_ATP_draw(AcCoA, ATP_draw):
 
     p = PARAMS["ATP"]
 
-    return (
-        p["k_ATP"]
-        * ATP_draw
-        * (
-            AcCoA
-            / (
-                p["K_draw"]
-                + AcCoA
-                + 1e-12
-            )
-        )
-    )
+    return ( p["k_ATP"] * ATP_draw * (AcCoA / (p["K_draw"] + AcCoA + 1e-12)) )
 
 
 def v_ATP_citrate(Cit, ATP_draw):
@@ -385,195 +275,75 @@ def v_ATP_citrate(Cit, ATP_draw):
     p_atp = PARAMS["ATP"]
     p_cit = PARAMS["Citrate"]
 
-    return (
-        p_atp["k_ATP_Cit"]
-        * ATP_draw
-        * Cit
-        / (
-            p_cit["Km"]
-            + Cit
-            + 1e-12
-        )
-    )
+    return ( p_atp["k_ATP_Cit"] * ATP_draw * Cit / (p_cit["Km"] + Cit + 1e-12) )
 
     
 
 
 
-def dGlc_ext_dt(Glc_ext, Glc_in):
+def dGlc_ext_dt(Glc_ext, Cit, Glc_in):
 
-    return (
-        Glc_in
-        - v_GLUT4(Glc_ext)
-    )
+    return ( Glc_in - v_GLUT4(Glc_ext, Cit) )
 
 
+def dGlc_dt(Glc, Glc_ext, Cit):
 
-def dGlc_dt(Glc, Glc_ext):
-
-    return (
-        v_GLUT4(Glc_ext)
-        - v_HK(Glc)
-    )
-
+    return ( v_GLUT4(Glc_ext, Cit) - v_HK(Glc) )
 
 
 def dGlc6P_dt(Glc6P, Glc):
 
-    return (
-        v_HK(Glc)
-        - v_PGI(Glc6P)
-        - v_GS(Glc6P)
-    )
-
+    return ( v_HK(Glc) - v_PGI(Glc6P) - v_GS(Glc6P) )
 
 
 def dFru6P_dt(Fru6P, Glc6P, Cit):
 
-    return (
-        v_PGI(Glc6P)
-        - v_PFK(Fru6P, Cit)
-    )
-
+    return ( v_PGI(Glc6P) - v_PFK(Fru6P, Cit) )
 
 
 def dFru16P2_dt(Fru16P2, Fru6P, Cit):
 
-    return (
-        v_PFK(Fru6P, Cit)
-        - v_LG(Fru16P2)
-    )
-
+    return ( v_PFK(Fru6P, Cit) - v_LG(Fru16P2) )
 
 
 def dPyruvate_dt(Pyruvate, Fru16P2, AcCoA):
 
-    return (
-        2.0 * v_LG(Fru16P2)
-        - v_PDH(Pyruvate, AcCoA)
-        - v_LDH(Pyruvate)
-    )
-
-
+    return ( 2.0 * v_LG(Fru16P2) - v_PDH(Pyruvate, AcCoA) - v_LDH(Pyruvate) )
 
 
 def dLCFA_ext_dt(LCFA_ext, LCFA_in):
 
-    return (
-        LCFA_in
-        - v_CD36(LCFA_ext)
-    )
+    return ( LCFA_in - v_CD36(LCFA_ext) )
 
 
+def dLCFA_CoA_cyto_dt(LCFA_ext, LCFA_CoA_cyto, Mal, Glc):
 
-def dLCFA_CoA_cyto_dt(
-    LCFA_ext,
-    LCFA_CoA_cyto,
-    Mal,
-    Glc
-):
-
-    return (
-        v_CD36(LCFA_ext)
-        + v_FAS(Mal, Glc)
-        - v_CPT1(
-            LCFA_CoA_cyto,
-            Mal
-        )
-        - v_TAG(
-            LCFA_CoA_cyto,
-            Glc
-        )
-    )
+    return ( v_CD36(LCFA_ext) + v_FAS(Mal, Glc) - v_CPT1(LCFA_CoA_cyto, Mal) - v_TAG(LCFA_CoA_cyto, Glc) )
 
 
+def dLCFA_CoA_mito_dt(LCFA_CoA_cyto, LCFA_CoA_mito, Mal):
 
-def dLCFA_CoA_mito_dt(
-    LCFA_CoA_cyto,
-    LCFA_CoA_mito,
-    Mal
-):
-
-    return (
-        v_CPT1(
-            LCFA_CoA_cyto,
-            Mal
-        )
-        - v_BetaOx(
-            LCFA_CoA_mito
-        )
-    )
+    return ( v_CPT1(LCFA_CoA_cyto, Mal) - v_BetaOx(LCFA_CoA_mito) )
 
 
+def dAcetylCoA_dt(AcCoA, Pyruvate, LCFA_CoA_mito, ATP_draw):
+
+    return ( v_PDH(Pyruvate, AcCoA) + v_BetaOx(LCFA_CoA_mito) - v_CitrateProd(AcCoA) - v_ATP_draw(AcCoA, ATP_draw) )
 
 
-def dAcetylCoA_dt(
-    AcCoA,
-    Pyruvate,
-    LCFA_CoA_mito,
-    ATP_draw
-):
+def dCit_dt(Cit, AcCoA, Glc, ATP_draw):
 
-    return (
-        v_PDH(
-            Pyruvate,
-            AcCoA
-        )
-        + v_BetaOx(
-            LCFA_CoA_mito
-        )
-        - v_CitrateProd(
-            AcCoA
-        )
-        - v_ATP_draw(
-            AcCoA,
-            ATP_draw
-        )
-    )
+    return ( v_CitrateProd(AcCoA) - v_ACL_ACC(Cit, Glc) - v_ATP_citrate(Cit, ATP_draw) )
 
 
+def dMal_dt(Cit, Mal, Glc):
 
-def dCit_dt(
-    Cit,
-    AcCoA,
-    Glc,
-    ATP_draw
-):
-
-    return (
-        v_CitrateProd(
-            AcCoA
-        )
-        - v_ACL_ACC(
-            Cit,
-            Glc
-        )
-        - v_ATP_citrate(
-            Cit,
-            ATP_draw
-        )
-    )
+    return ( v_ACL_ACC(Cit, Glc) - v_FAS(Mal, Glc) )
 
 
+def dTAG_dt(LCFA_CoA_cyto, Glc):
 
-
-def dMal_dt(
-    Cit,
-    Mal,
-    Glc
-):
-
-    return (
-        v_ACL_ACC(
-            Cit,
-            Glc
-        )
-        - v_FAS(
-            Mal,
-            Glc
-        )
-    )
-
+    return ( v_TAG(LCFA_CoA_cyto, Glc) )
 
 
 # ------------------------------------------------------------
@@ -581,6 +351,7 @@ def dMal_dt(
 # ------------------------------------------------------------
 
 def compute_fluxes(x, inputs):
+
     """
     Compute all pathway fluxes used by the frontend.
 
@@ -600,80 +371,31 @@ def compute_fluxes(x, inputs):
         LCFA_ext,
         LCFA_CoA_cyto,
         LCFA_CoA_mito,
-        Mal
+        Mal,
+        TAG
     ) = x
 
-    GLUT4 = v_GLUT4(
-        Glc_ext
-    )
-
-    Glycolysis = v_LG(
-        Fru16P2
-    )
-
-    PDH = v_PDH(
-        Pyruvate,
-        AcCoA
-    )
-
-    Citrate_prod = v_CitrateProd(
-        AcCoA
-    )
-
-    ACL_ACC = v_ACL_ACC(
-        Cit,
-        Glc
-    )
-
-    CD36 = v_CD36(
-        LCFA_ext
-    )
-
-    CPT1 = v_CPT1(
-        LCFA_CoA_cyto,
-        Mal
-    )
-
-    BetaOx = v_BetaOx(
-        LCFA_CoA_mito
-    )
-
-    FAS = v_FAS(
-        Mal,
-        Glc
-    )
+    GLUT4       = v_GLUT4(Glc_ext, Cit)
+    Glycolysis  = v_LG(Fru16P2)
+    PDH         = v_PDH(Pyruvate, AcCoA)
+    CitrateProd = v_CitrateProd(AcCoA)
+    ACL_ACC     = v_ACL_ACC(Cit, Glc)
+    CD36        = v_CD36(LCFA_ext)
+    CPT1        = v_CPT1(LCFA_CoA_cyto, Mal)
+    BetaOx      = v_BetaOx(LCFA_CoA_mito)
+    FAS         = v_FAS(Mal, Glc)
 
     return {
-
-        "GLUT4":
-            float(max(0.0, GLUT4)),
-
-        "Glycolysis":
-            float(max(0.0, Glycolysis)),
-
-        "PDH":
-            float(max(0.0, PDH)),
-
-        "Citrate_prod":
-            float(max(0.0, Citrate_prod)),
-
-        "ACL_ACC":
-            float(max(0.0, ACL_ACC)),
-
-        "CD36":
-            float(max(0.0, CD36)),
-
-        "CPT1":
-            float(max(0.0, CPT1)),
-
-        "BetaOx":
-            float(max(0.0, BetaOx)),
-
-        "FAS":
-            float(max(0.0, FAS)),
-
-        "Net_Cit":
-            float(Citrate_prod - ACL_ACC)
+        "GLUT4": float(max(0.0, GLUT4)),
+        "Glycolysis": float(max(0.0, Glycolysis)),
+        "PDH": float(max(0.0, PDH)),
+        "Citrate_prod": float(max(0.0, CitrateProd)),
+        "ACL_ACC": float(max(0.0, ACL_ACC)),
+        "CD36": float(max(0.0, CD36)),
+        "CPT1": float(max(0.0, CPT1)),
+        "BetaOx": float(max(0.0, BetaOx)),
+        "FAS": float(max(0.0, FAS)),
+        "Net_Cit": float(CitrateProd - ACL_ACC)
     }
 
 
@@ -683,53 +405,44 @@ def compute_fluxes(x, inputs):
 # Canonical inhibition functions
 # ------------------------------------------------------------
 
+def inhibition_GLUT4(Cit):
+
+    alpha = PARAMS["GLUT4"]["alpha_Cit"]
+
+    return (alpha * Cit) / (1.0 + alpha * Cit)
+
+
 def inhibition_PDH(AcCoA):
 
     alpha = PARAMS["PDH"]["alpha_AcCoA"]
 
-    return (
-        alpha * AcCoA
-    ) / (
-        1.0 + alpha * AcCoA
-    )
+    return (alpha * AcCoA) / (1.0 + alpha * AcCoA)
 
 
 def inhibition_CPT1(Mal):
 
     alpha = PARAMS["CPT1"]["alpha_Mal"]
 
-    return (
-        alpha * Mal
-    ) / (
-        1.0 + alpha * Mal
-    )
+    return (alpha * Mal) / (1.0 + alpha * Mal)
 
 
 def inhibition_PFK(Cit):
 
     alpha = PARAMS["PFK"]["alpha_Cit"]
 
-    return (
-        alpha * Cit
-    ) / (
-        1.0 + alpha * Cit
-    )
+    return (alpha * Cit) / (1.0 + alpha * Cit)
 
 
 def inhibition_BetaOx(Mal):
 
     # currently a visualization proxy
 
-    return (
-        Mal
-        / (
-            0.2 + Mal
-        )
-    )
+    return ( Mal / (0.2 + Mal) )
 
 
 
 def compute_inhibitions(state):
+
     """
     Frontend inhibition indicators.
 
@@ -742,24 +455,9 @@ def compute_inhibitions(state):
     Mal   = state[STATE_INDEX["Mal"]]
 
     return {
-
-        "PDH":
-            float(
-                inhibition_PDH(AcCoA)
-            ),
-
-        "CPT1":
-            float(
-                inhibition_CPT1(Mal)
-            ),
-
-        "Glycolysis":
-            float(
-                inhibition_PFK(Cit)
-            ),
-
-        "BetaOx":
-            float(
-                inhibition_BetaOx(Mal)
-            )
+        "GLUT4": float(inhibition_GLUT4(Cit)),
+        "PDH": float(inhibition_PDH(AcCoA)),
+        "CPT1": float(inhibition_CPT1(Mal)),
+        "PFK": float(inhibition_PFK(Cit)),
+        "BetaOx": float(inhibition_BetaOx(Mal))
     }

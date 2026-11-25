@@ -9,7 +9,8 @@ import kinetics
 
 from model_interface import (
     DEFAULT_STATE,
-    step_ivp_once
+    step_ivp_once,
+    derivatives
 )
 
 # ------------------------------------------------------------
@@ -92,11 +93,22 @@ async def handler(websocket):
             # Build payload
             # ------------------------------------------------
 
+            dxdt = derivatives(
+                0,
+                state,
+                inputs
+            )
+
             payload = {
 
                 # Actual concentrations
                 "state": kinetics.state_to_dict(
                     state
+                ),
+
+                # State derivatives (dx/dt)
+                "dstate": kinetics.state_to_dict(
+                    dxdt
                 ),
 
                 # Reaction rates

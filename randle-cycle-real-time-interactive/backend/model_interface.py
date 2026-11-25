@@ -54,17 +54,20 @@ def derivatives(t, x, inputs):
         LCFA_ext,
         LCFA_CoA_cyto,
         LCFA_CoA_mito,
-        Mal
+        Mal,
+        TAG
     ) = x
 
     dGlc_ext = kinetics.dGlc_ext_dt(
         Glc_ext,
+        Cit,
         inputs["glu_in"]
     )
 
     dGlc = kinetics.dGlc_dt(
         Glc,
-        Glc_ext
+        Glc_ext,
+        Cit
     )
 
     dGlc6P = kinetics.dGlc6P_dt(
@@ -128,6 +131,11 @@ def derivatives(t, x, inputs):
         Glc
     )
 
+    dTAG = kinetics.dTAG_dt(
+        LCFA_CoA_cyto,
+        Glc
+    )
+
     return [
         dGlc_ext,
         dGlc,
@@ -140,7 +148,8 @@ def derivatives(t, x, inputs):
         dLCFA_ext,
         dLCFA_cyto,
         dLCFA_mito,
-        dMal
+        dMal,
+        dTAG
     ]
 
 
