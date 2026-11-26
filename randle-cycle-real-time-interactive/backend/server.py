@@ -57,6 +57,12 @@ async def handler(websocket):
 
                 data = json.loads(msg)
 
+                if data.get("reset", False):
+
+                    state = DEFAULT_STATE.copy()
+
+                    continue
+
                 for key in [
                     "glu_in",
                     "fat_in",

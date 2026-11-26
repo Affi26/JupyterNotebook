@@ -1,44 +1,77 @@
 {
   "nodes": {
-    "Glc_ext": [100, 40],
-    "Glc": [100, 200],
-    "Glc6P": [60, 260],
-    "Fru6P": [160, 290],
-    "Fru16P2": [100, 360],
-    "Pyruvate": [100, 440],
 
-    "LCFA_ext": [1000, 40],
-    "LCFA_CoA_cyto": [1000, 260],
-    "LCFA_CoA_mito": [1000, 440],
+    "Glc_ext": [200, 40],
+    "GLUT4": [200, 120],
+    "Glc": [200, 200],
+    "Glc6P": [200, 280],
+    "PGI": [200, 360],
+    "Fru6P": [200, 440],
+    "PFK": [200, 520],
+    "Fru16P2": [200, 600],
 
-    "AcCoA": [550, 440],
-    "Cit": [550, 200],
-    "Mal": [550, 130]
+    "Pyruvate": [400, 600],
+    "PDH": [520, 600],
+
+    "AcCoA": [650, 500],
+    "Cit": [650, 360],
+
+    "ACL_ACC": [650, 250],
+    "Mal": [650, 140],
+
+    "FAS": [920, 200],
+
+    "LCFA_ext": [1100, 40],
+    "CD36": [1100, 120],
+    "LCFA_CoA_cyto": [1100, 260],
+    "CPT1": [1100, 370],
+    "LCFA_CoA_mito": [1100, 500],
+    "BetaOx": [920, 500],
+
+    "TAG": [1250, 180]
   },
 
   "flux_edges": [
-    ["Glc_ext", "Glc"],
+
+    ["Glc_ext", "GLUT4"],
+    ["GLUT4", "Glc"],
+
     ["Glc", "Glc6P"],
-    ["Glc6P", "Fru6P"],
-    ["Fru6P", "Fru16P2"],
+    ["Glc6P", "PGI"],
+    ["PGI", "Fru6P"],
+
+    ["Fru6P", "PFK"],
+    ["PFK", "Fru16P2"],
+
     ["Fru16P2", "Pyruvate"],
-
-    ["LCFA_ext", "LCFA_CoA_cyto"],
-    ["LCFA_CoA_cyto", "LCFA_CoA_mito"],
-
-    ["LCFA_CoA_mito", "AcCoA"],
-    ["Pyruvate", "AcCoA"],
+    ["Pyruvate", "PDH"],
+    ["PDH", "AcCoA"],
 
     ["AcCoA", "Cit"],
-    ["Cit", "Mal"]
+    ["Cit", "ACL_ACC"],
+    ["ACL_ACC", "Mal"],
+
+    ["Mal", "FAS"],
+    ["FAS", "LCFA_CoA_cyto"],
+
+    ["LCFA_ext", "CD36"],
+    ["CD36", "LCFA_CoA_cyto"],
+
+    ["LCFA_CoA_cyto", "CPT1"],
+    ["CPT1", "LCFA_CoA_mito"],
+
+    ["LCFA_CoA_mito", "BetaOx"],
+    ["BetaOx", "AcCoA"],
+
+    ["LCFA_CoA_cyto", "TAG"]
   ],
 
   "inhibition_edges": [
-    ["Cit", "Pyruvate"],
-    ["Cit", "Fru6P"],
-    ["Cit", "Glc_ext"],
 
-    ["Mal", "LCFA_CoA_mito"],
-    ["Mal", "LCFA_CoA_cyto"]
+    ["Cit", "GLUT4"],
+    ["Cit", "PFK"],
+    ["AcCoA", "PDH"],
+    ["Mal", "CPT1"]
+
   ]
 }

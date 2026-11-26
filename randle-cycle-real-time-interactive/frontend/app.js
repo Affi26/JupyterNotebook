@@ -50,12 +50,32 @@ function concentrationColor(c) {
         1.0
     );
 
-    const r = Math.floor(255 * x);
-    const g = Math.floor(180 * (1 - x));
-    const b = 80;
+    let r, g, b;
+
+    if (x < 0.5) {
+
+        // Cyan → Yellow
+
+        const t = x / 0.5;
+
+        r = Math.floor(255 * t);
+        g = 255;
+        b = Math.floor(255 * (1 - t));
+
+    } else {
+
+        // Yellow → Orange
+
+        const t = (x - 0.5) / 0.5;
+
+        r = 255;
+        g = Math.floor(255 - 90 * t);
+        b = 0;
+    }
 
     return (r << 16) + (g << 8) + b;
 }
+
 
 // ------------------------------------------------------------
 // Load metabolic layout
@@ -74,13 +94,23 @@ async function loadLayout() {
 
 const app = new PIXI.Application({
 
-    width: 1300,
-    height: 600,
+    width: 1400,
+    height: 675,
     backgroundColor: 0x1e1e1e,
 
 });
 
 document.body.appendChild(app.view);
+
+const fluxLayer = new PIXI.Container();
+const inhibitionLayer = new PIXI.Container();
+const nodeLayer = new PIXI.Container();
+const labelLayer = new PIXI.Container();
+
+app.stage.addChild(fluxLayer);
+app.stage.addChild(inhibitionLayer);
+app.stage.addChild(nodeLayer);
+app.stage.addChild(labelLayer);
 
 // ------------------------------------------------------------
 // Containers
@@ -89,6 +119,18 @@ document.body.appendChild(app.view);
 let nodes = {};
 let fluxEdges = [];
 let inhibitionEdges = [];
+
+const enzymeNodes = new Set([
+    "GLUT4",
+    "PGI",
+    "PFK",
+    "PDH",
+    "ACL_ACC",
+    "FAS",
+    "CD36",
+    "CPT1",
+    "BetaOx"
+]);
 
 // ------------------------------------------------------------
 // Create nodes
@@ -109,26 +151,46 @@ function createNodes(nodePositions) {
         g.x = x;
         g.y = y;
 
-        const label = new PIXI.Text(name, {
+        const nameBackground = new PIXI.Graphics();
 
+        const nameLabel = new PIXI.Text("", {
             fontFamily: "Arial",
             fontSize: 14,
+            fontWeight: "bold",
             fill: 0xffffff
-
         });
 
-        label.x = x + 25;
-        label.y = y - 10;
+        const concLabel = new PIXI.Text("", {
+            fontFamily: "Arial",
+            fontSize: 12,
+            fontWeight: "bold",
+            fill: 0xffffff
+        });
+
+        const rateLabel = new PIXI.Text("", {
+            fontFamily: "Arial",
+            fontSize: 12,
+            fontWeight: "bold",
+            fill: 0xcccccc
+        });
 
         nodes[name] = {
 
             gfx: g,
-            label: label
+
+            nameBackground: nameBackground,
+
+            nameLabel: nameLabel,
+            concLabel: concLabel,
+            rateLabel: rateLabel
 
         };
 
-        app.stage.addChild(g);
-        app.stage.addChild(label);
+        nodeLayer.addChild(g);
+        labelLayer.addChild(nameBackground);
+        labelLayer.addChild(nameLabel);
+        labelLayer.addChild(concLabel);
+        labelLayer.addChild(rateLabel);
     }
 }
 
@@ -165,7 +227,7 @@ function createFluxEdges(edgeList) {
             gfx: line
         });
 
-        app.stage.addChild(line);
+        fluxLayer.addChild(line);
     }
 }
 
@@ -198,7 +260,7 @@ function createInhibitionEdges(edgeList) {
             gfx: line
         });
 
-        app.stage.addChild(line);
+        inhibitionLayer.addChild(line);
     }
 }
 
@@ -208,40 +270,59 @@ function createInhibitionEdges(edgeList) {
 
 const fluxMap = {
 
-    "Glc_ext→Glc": "GLUT4",
-    "Glc→Glc6P": "Glycolysis",
-    "Fru6P→Fru16P2": "Glycolysis",
-    "Fru16P2→Pyruvate": "Glycolysis",
-    "Pyruvate→AcCoA": "PDH",
+    // Glucose branch
 
-    "LCFA_CoA_mito→AcCoA": "BetaOx",
+    "Glc_ext→GLUT4": "GLUT4",
+    "GLUT4→Glc": "GLUT4",
+
+    "Glc→Glc6P": "Glycolysis",
+
+    "Glc6P→PGI": "PGI",
+    "PGI→Fru6P": "PGI",
+
+    "Fru6P→PFK": "Glycolysis",
+    "PFK→Fru16P2": "Glycolysis",
+
+    "Fru16P2→Pyruvate": "Glycolysis",
+
+    "Pyruvate→PDH": "PDH",
+    "PDH→AcCoA": "PDH",
+
+    // Citrate / lipogenesis branch
 
     "AcCoA→Cit": "Citrate_prod",
 
-    "Cit→Mal": "ACL_ACC",
+    "Cit→ACL_ACC": "ACL_ACC",
+    "ACL_ACC→Mal": "ACL_ACC",
 
-    "LCFA_ext→LCFA_CoA_cyto": "CD36",
-    "LCFA_CoA_cyto→LCFA_CoA_mito": "CPT1",
+    "Mal→FAS": "FAS",
+    "FAS→LCFA_CoA_cyto": "FAS",
 
-    "Cit→Pyruvate": "Citrate_prod",
-    "Cit→Fru6P": "Citrate_prod",
-    "Cit→Glc_ext": "Citrate_prod",
+    // Fat uptake branch
 
-    "Mal→LCFA_CoA_mito": "FAS",
-    "Mal→LCFA_CoA_cyto": "FAS"
+    "LCFA_ext→CD36": "CD36",
+    "CD36→LCFA_CoA_cyto": "CD36",
+
+    "LCFA_CoA_cyto→CPT1": "CPT1",
+    "CPT1→LCFA_CoA_mito": "CPT1",
+
+    "LCFA_CoA_mito→BetaOx": "BetaOx",
+    "BetaOx→AcCoA": "BetaOx",
+
+    // Storage
+
+    "LCFA_CoA_cyto→TAG": "TAG"
 };
 
 const inhibitionMap = {
 
-    "Cit→Pyruvate": "PDH",
+    "Cit→GLUT4": "GLUT4",
 
-    "Cit→Fru6P": "Glycolysis",
+    "Cit→PFK": "PFK",
 
-    "Cit→Glc_ext": "Glycolysis",
+    "AcCoA→PDH": "PDH",
 
-    "Mal→LCFA_CoA_mito": "CPT1",
-
-    "Mal→LCFA_CoA_cyto": "BetaOx"
+    "Mal→CPT1": "CPT1"
 };
 
 // ------------------------------------------------------------
@@ -253,6 +334,7 @@ const ws = new WebSocket("ws://localhost:8765");
 const gluSlider = document.getElementById("gluSlider");
 const fatSlider = document.getElementById("fatSlider");
 const atpSlider = document.getElementById("atpSlider");
+const resetButton = document.getElementById("resetButton");
 
 function sendInputs() {
 
@@ -270,6 +352,16 @@ function sendInputs() {
 gluSlider.oninput = sendInputs;
 fatSlider.oninput = sendInputs;
 atpSlider.oninput = sendInputs;
+
+resetButton.onclick = () => {
+
+    ws.send(
+        JSON.stringify({
+            reset: true
+        })
+    );
+
+};
 
 // ------------------------------------------------------------
 // Receive updates
@@ -337,14 +429,98 @@ ws.onmessage = (event) => {
                 1 + 10 * conc
             );
 
-        nodeObj.gfx.tint =
-            concentrationColor(conc);
+        if (enzymeNodes.has(name)) {
 
-        nodeObj.gfx.scale.set(
-            concScale * shrink
-        );
+            nodeObj.gfx.clear();
 
-        nodeObj.label.text = `${name}, ${conc.toFixed(3)}, ${rate.toExponential(2)}`;
+            nodeObj.gfx.beginFill(0xcc8844);
+
+            nodeObj.gfx.drawRoundedRect(
+                -30,
+                -12,
+                60,
+                24,
+                4
+            );
+
+            nodeObj.gfx.endFill();
+
+            nodeObj.gfx.scale.set(1.0);
+
+            nodeObj.nameLabel.anchor.set(0.5);
+
+            nodeObj.nameLabel.text = name;
+            nodeObj.concLabel.text = "";
+            nodeObj.rateLabel.text = "";
+
+            nodeObj.nameLabel.x = nodeObj.gfx.x;
+            nodeObj.nameLabel.y = nodeObj.gfx.y;
+
+            nodeObj.concLabel.x = nodeObj.gfx.x;
+            nodeObj.concLabel.y = nodeObj.gfx.y;
+
+            nodeObj.rateLabel.x = nodeObj.gfx.x;
+            nodeObj.rateLabel.y = nodeObj.gfx.y;
+
+        } else {
+
+            nodeObj.gfx.clear();
+
+            nodeObj.gfx.beginFill(
+                concentrationColor(conc)
+            );
+
+            nodeObj.gfx.drawCircle(
+                0,
+                0,
+                20
+            );
+
+            nodeObj.gfx.endFill();
+
+            nodeObj.gfx.scale.set(
+                concScale * shrink
+            );
+
+            nodeObj.nameLabel.anchor.set(0.5);
+            nodeObj.concLabel.anchor.set(0.5);
+            nodeObj.rateLabel.anchor.set(0.5);
+
+            nodeObj.nameLabel.text = name;
+
+            nodeObj.concLabel.text =
+                conc.toFixed(3);
+
+            nodeObj.rateLabel.text =
+                rate.toExponential(2);
+
+            nodeObj.nameLabel.x = nodeObj.gfx.x + 60;
+            nodeObj.nameLabel.y = nodeObj.gfx.y + 30;
+
+            nodeObj.concLabel.x = nodeObj.gfx.x + 60;
+            nodeObj.concLabel.y = nodeObj.gfx.y + 45;
+
+            nodeObj.rateLabel.x = nodeObj.gfx.x + 60;
+            nodeObj.rateLabel.y = nodeObj.gfx.y + 60;
+
+            nodeObj.nameBackground.clear();
+
+            nodeObj.nameBackground.beginFill(
+                0x555555,
+                0.8
+            );
+
+            nodeObj.nameBackground.drawRoundedRect(
+                nodeObj.nameLabel.x - 57.5,
+                nodeObj.nameLabel.y - 10,
+                115,
+                20,
+                4
+            );
+
+            nodeObj.nameBackground.endFill();
+
+        }
     }
 
     // --------------------------------------------------------

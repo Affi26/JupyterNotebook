@@ -376,6 +376,7 @@ def compute_fluxes(x, inputs):
     ) = x
 
     GLUT4       = v_GLUT4(Glc_ext, Cit)
+    PGI         = v_PGI(Glc6P)
     Glycolysis  = v_LG(Fru16P2)
     PDH         = v_PDH(Pyruvate, AcCoA)
     CitrateProd = v_CitrateProd(AcCoA)
@@ -384,9 +385,11 @@ def compute_fluxes(x, inputs):
     CPT1        = v_CPT1(LCFA_CoA_cyto, Mal)
     BetaOx      = v_BetaOx(LCFA_CoA_mito)
     FAS         = v_FAS(Mal, Glc)
+    TAG         = v_TAG(LCFA_CoA_cyto, Glc)
 
     return {
         "GLUT4": float(max(0.0, GLUT4)),
+        "PGI": float(max(0.0, PGI)),
         "Glycolysis": float(max(0.0, Glycolysis)),
         "PDH": float(max(0.0, PDH)),
         "Citrate_prod": float(max(0.0, CitrateProd)),
@@ -395,7 +398,8 @@ def compute_fluxes(x, inputs):
         "CPT1": float(max(0.0, CPT1)),
         "BetaOx": float(max(0.0, BetaOx)),
         "FAS": float(max(0.0, FAS)),
-        "Net_Cit": float(CitrateProd - ACL_ACC)
+        "Net_Cit": float(CitrateProd - ACL_ACC),
+        "TAG": float(max(0.0, TAG))
     }
 
 
